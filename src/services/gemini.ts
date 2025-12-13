@@ -18,11 +18,24 @@ export const generateLessonFromImage = async (imageBase64: string, mimeType: str
   "title": "lesson title",
   "subject": "subject name",
   "grade": "grade level",
-  "explanation": "detailed explanation of the topic (2-3 paragraphs)",
+  "explanation": "comprehensive, in-depth explanation of the topic",
   "slides": [{"title": "slide title", "content": "slide content", "notes": "teacher notes"}],
   "quiz": [{"question": "question text", "type": "mcq", "options": ["a", "b", "c", "d"], "correctAnswer": "a", "points": 10}],
   "homework": ["homework task 1", "homework task 2"]
 }
+
+IMPORTANT - For the "explanation" field, provide a thorough and comprehensive explanation that includes:
+1. An engaging introduction that hooks students and explains why this topic matters
+2. Clear definitions of all key terms and concepts with simple language
+3. Step-by-step breakdown of the main ideas with logical progression
+4. Multiple real-world examples and practical applications students can relate to
+5. Common misconceptions or mistakes to avoid
+6. Connections to previously learned material or other subjects
+7. Visual descriptions or analogies that help students visualize abstract concepts
+8. A summary of the key takeaways
+
+The explanation should be 5-8 substantial paragraphs, written in an engaging teacher-friendly tone that can be read aloud or used as lecture notes. Use markdown formatting with headers (##), bullet points, and numbered lists to organize the content clearly.
+
 Generate 5-7 slides, 5 quiz questions, and 3-5 homework tasks. Return ONLY valid JSON.`;
 
   const result = await model.generateContent([
@@ -56,11 +69,24 @@ export const generateLessonFromMultipleFiles = async (
   "title": "lesson title",
   "subject": "subject name",
   "grade": "grade level",
-  "explanation": "detailed explanation of the topic (2-3 paragraphs)",
+  "explanation": "comprehensive, in-depth explanation of the topic",
   "slides": [{"title": "slide title", "content": "slide content", "notes": "teacher notes"}],
   "quiz": [{"question": "question text", "type": "mcq", "options": ["a", "b", "c", "d"], "correctAnswer": "a", "points": 10}],
   "homework": ["homework task 1", "homework task 2"]
 }
+
+IMPORTANT - For the "explanation" field, provide a thorough and comprehensive explanation that includes:
+1. An engaging introduction that hooks students and explains why this topic matters
+2. Clear definitions of all key terms and concepts with simple language
+3. Step-by-step breakdown of the main ideas with logical progression
+4. Multiple real-world examples and practical applications students can relate to
+5. Common misconceptions or mistakes to avoid
+6. Connections to previously learned material or other subjects
+7. Visual descriptions or analogies that help students visualize abstract concepts
+8. A summary of the key takeaways
+
+The explanation should be 5-8 substantial paragraphs, written in an engaging teacher-friendly tone that can be read aloud or used as lecture notes. Use markdown formatting with headers (##), bullet points, and numbered lists to organize the content clearly.
+
 Generate 5-7 slides, 5 quiz questions, and 3-5 homework tasks. Return ONLY valid JSON.`;
 
   const result = await model.generateContent([...fileParts, prompt]);
