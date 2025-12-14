@@ -1087,3 +1087,317 @@ export const exportRemixToPDFBW = (remix: import('../types').RemixedLesson) => {
 
   doc.save(`${remix.newTitle.replace(/[^a-zA-Z0-9]/g, '_')}_Remixed_BW.pdf`);
 };
+
+
+// ============ GRADING RESULTS PDF EXPORT ============
+
+interface GradedPaper {
+  studentName: string;
+  score: number;
+  feedback: string;
+  detailedResults?: { question: string; answer: string; correct: boolean; points: number }[];
+}
+
+export const exportGradingResultsToPDF = (results: GradedPaper[]) => {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 20;
+  const contentWidth = pageWidth - margin * 2;
+  let y = margin;
+
+  const avgScore = Math.round(results.reduce((sum, r) => sum + r.score, 0) / results.length);
+  const passCount = results.filter(r => r.score >= 70).length;
+  const failCount = results.length - passCount;
+
+  const addNewPageIfNeeded = (requiredSpace: number) => {
+    if (y + requiredSpace > pageHeight - margin) { doc.addPage(); y = margin; return true; }
+    return false;
+  };
+
+  // Header
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(0, 0, pageWidth, 50, 'F');
+  doc.setTextColor(...COLORS.white);
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Grading Results', margin, 24);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${results.length} Papers Graded`, margin, 36);
+  doc.text(`Generated: ${new Date().toLocaleDateString()}`, margin, 45);
+  y = 60;
+
+  // Summary Stats
+  doc.setFillColor(250, 250, 250);
+  doc.setDrawColor(...COLORS.lightGray);
+  doc.roundedRect(margin, y, contentWidth, 25, 3, 3, 'FD');
+  
+  const statWidth = contentWidth / 3;
+  
+  // Average Score
+  doc.setTextColor(...COLORS.primary);
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${avgScore}%`, margin + statWidth / 2, y + 12, { align: 'center' });
+  doc.setTextColor(...COLORS.gray);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Average Score', margin + statWidth / 2, y + 20, { align: 'center' });
+  
+  // Pass Count
+  doc.setTextColor(34, 197, 94);
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${passCount}`, margin + statWidth + statWidth / 2, y + 12, { align: 'center' });
+  doc.setTextColor(...COLORS.gray);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Passed (≥70%)', margin + statWidth + statWidth / 2, y + 20, { align: 'center' });
+  
+  // Fail Count
+  doc.setTextColor(239, 68, 68);
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${failCount}`, margin + statWidth * 2 + statWidth / 2, y + 12, { align: 'center' });
+  doc.setTextColor(...COLORS.gray);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Below 70%', margin + statWidth * 2 + statWidth / 2, y + 20, { align: 'center' });
+  
+  y += 35;
+
+  // Section Title
+  doc.setFillColor(...COLORS.lightGray);
+  doc.roundedRect(margin, y, contentWidth, 12, 2, 2, 'F');
+  doc.setTextColor(...COLORS.primary);
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.text('📋  Individual Results', margin + 5, y + 8);
+  y += 18;
+
+  // Individual Results
+  results.forEach((paper) => {
+    const hasDetails = paper.detailedResults && paper.detailedResults.length > 0;
+    const cardHeight = hasDetails ? 45 + paper.detailedResults!.length * 8 : 45;
+    addNewPageIfNeeded(cardHeight);
+
+    // Card background
+    doc.setFillColor(250, 250, 250);
+    doc.setDrawColor(...COLORS.lightGray);
+    doc.roundedRect(margin, y, contentWidth, cardHeight, 3, 3, 'FD');
+
+    // Student avatar circle
+    doc.setFillColor(...COLORS.primary);
+    doc.circle(margin + 12, y + 12, 8, 'F');
+    doc.setTextColor(...COLORS.white);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(paper.studentName.charAt(0).toUpperCase(), margin + 12, y + 15, { align: 'center' });
+
+    // Student name
+    doc.setTextColor(...COLORS.dark);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(paper.studentName, margin + 25, y + 14);
+
+    // Score badge
+    const scoreColor = paper.score >= 70 ? [34, 197, 94] : [239, 68, 68];
+    doc.setFillColor(scoreColor[0], scoreColor[1], scoreColor[2], 0.1);
+    doc.roundedRect(pageWidth - margin - 30, y + 5, 25, 14, 3, 3, 'F');
+    doc.setTextColor(scoreColor[0], scoreColor[1], scoreColor[2]);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${paper.score}%`, pageWidth - margin - 17.5, y + 14, { align: 'center' });
+
+    // Feedback
+    doc.setTextColor(...COLORS.gray);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const feedbackLines = doc.splitTextToSize(cleanText(paper.feedback), contentWidth - 20);
+    feedbackLines.slice(0, 2).forEach((line: string, idx: number) => {
+      doc.text(line, margin + 8, y + 26 + idx * 5);
+    });
+
+    // Detailed results if available
+    if (hasDetails) {
+      let detailY = y + 40;
+      paper.detailedResults!.forEach((result) => {
+        // Use light background colors (proper RGB without alpha)
+        const bgColor: [number, number, number] = result.correct ? [220, 252, 231] : [254, 226, 226];
+        const textColor: [number, number, number] = result.correct ? [22, 163, 74] : [220, 38, 38];
+        doc.setFillColor(...bgColor);
+        doc.roundedRect(margin + 5, detailY, contentWidth - 10, 7, 1, 1, 'F');
+        doc.setTextColor(...textColor);
+        doc.setFontSize(8);
+        doc.text(result.correct ? '✓' : '✗', margin + 8, detailY + 5);
+        doc.setTextColor(...COLORS.dark);
+        doc.text(cleanText(result.question).substring(0, 50), margin + 15, detailY + 5);
+        doc.setTextColor(...COLORS.gray);
+        doc.text(`${result.points} pts`, pageWidth - margin - 15, detailY + 5);
+        detailY += 8;
+      });
+    }
+
+    y += cardHeight + 8;
+  });
+
+  // Footer
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(...COLORS.lightGray);
+    doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
+    doc.setTextColor(...COLORS.gray);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Generated by Teacherforge AI', margin, pageHeight - 8);
+    doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin - 20, pageHeight - 8);
+  }
+
+  const fileName = results.length === 1 
+    ? `${results[0].studentName.replace(/[^a-zA-Z0-9]/g, '_')}_GradingResult.pdf`
+    : `Grading_Results_${results.length}_Students.pdf`;
+  doc.save(fileName);
+};
+
+export const exportGradingResultsToPDFBW = (results: GradedPaper[]) => {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 20;
+  const contentWidth = pageWidth - margin * 2;
+  let y = margin;
+  const BLACK: [number, number, number] = [0, 0, 0];
+  const DARK_GRAY: [number, number, number] = [60, 60, 60];
+  const MEDIUM_GRAY: [number, number, number] = [120, 120, 120];
+  const LIGHT_GRAY: [number, number, number] = [200, 200, 200];
+  const WHITE: [number, number, number] = [255, 255, 255];
+
+  const avgScore = Math.round(results.reduce((sum, r) => sum + r.score, 0) / results.length);
+  const passCount = results.filter(r => r.score >= 70).length;
+  const failCount = results.length - passCount;
+
+  const addNewPageIfNeeded = (requiredSpace: number) => {
+    if (y + requiredSpace > pageHeight - margin) { doc.addPage(); y = margin; return true; }
+    return false;
+  };
+
+  // Header
+  doc.setFillColor(...BLACK);
+  doc.rect(0, 0, pageWidth, 45, 'F');
+  doc.setTextColor(...WHITE);
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('GRADING RESULTS', margin, 22);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${results.length} Papers Graded`, margin, 33);
+  doc.text(`Generated: ${new Date().toLocaleDateString()}`, margin, 41);
+  y = 55;
+
+  // Summary Stats
+  doc.setDrawColor(...BLACK);
+  doc.setLineWidth(0.5);
+  doc.rect(margin, y, contentWidth, 20);
+  
+  const statWidth = contentWidth / 3;
+  doc.line(margin + statWidth, y, margin + statWidth, y + 20);
+  doc.line(margin + statWidth * 2, y, margin + statWidth * 2, y + 20);
+  
+  doc.setTextColor(...BLACK);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${avgScore}%`, margin + statWidth / 2, y + 10, { align: 'center' });
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Average', margin + statWidth / 2, y + 16, { align: 'center' });
+  
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${passCount}`, margin + statWidth + statWidth / 2, y + 10, { align: 'center' });
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Passed', margin + statWidth + statWidth / 2, y + 16, { align: 'center' });
+  
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${failCount}`, margin + statWidth * 2 + statWidth / 2, y + 10, { align: 'center' });
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Below 70%', margin + statWidth * 2 + statWidth / 2, y + 16, { align: 'center' });
+  
+  y += 30;
+
+  // Section Title
+  doc.setDrawColor(...BLACK);
+  doc.line(margin, y, pageWidth - margin, y);
+  doc.setTextColor(...BLACK);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('INDIVIDUAL RESULTS', margin, y + 10);
+  y += 16;
+
+  // Individual Results
+  results.forEach((paper) => {
+    const hasDetails = paper.detailedResults && paper.detailedResults.length > 0;
+    const cardHeight = hasDetails ? 30 + paper.detailedResults!.length * 6 : 30;
+    addNewPageIfNeeded(cardHeight);
+
+    // Card border
+    doc.setDrawColor(...LIGHT_GRAY);
+    doc.setLineWidth(0.3);
+    doc.rect(margin, y, contentWidth, cardHeight);
+
+    // Student name and score
+    doc.setTextColor(...BLACK);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(paper.studentName, margin + 5, y + 8);
+    
+    const scoreText = `${paper.score}%${paper.score >= 70 ? ' ✓' : ''}`;
+    doc.text(scoreText, pageWidth - margin - 5, y + 8, { align: 'right' });
+
+    // Feedback
+    doc.setTextColor(...DARK_GRAY);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    const feedbackLines = doc.splitTextToSize(cleanText(paper.feedback), contentWidth - 15);
+    feedbackLines.slice(0, 2).forEach((line: string, idx: number) => {
+      doc.text(line, margin + 5, y + 16 + idx * 4);
+    });
+
+    // Detailed results if available
+    if (hasDetails) {
+      let detailY = y + 26;
+      paper.detailedResults!.forEach((result) => {
+        doc.setTextColor(...BLACK);
+        doc.setFontSize(8);
+        doc.text(result.correct ? '✓' : '✗', margin + 5, detailY);
+        doc.setTextColor(...MEDIUM_GRAY);
+        doc.text(cleanText(result.question).substring(0, 55), margin + 12, detailY);
+        doc.text(`${result.points}pts`, pageWidth - margin - 5, detailY, { align: 'right' });
+        detailY += 6;
+      });
+    }
+
+    y += cardHeight + 5;
+  });
+
+  // Footer
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(...LIGHT_GRAY);
+    doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
+    doc.setTextColor(...MEDIUM_GRAY);
+    doc.setFontSize(9);
+    doc.text('Generated by Teacherforge AI', margin, pageHeight - 8);
+    doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin - 20, pageHeight - 8);
+  }
+
+  const fileName = results.length === 1 
+    ? `${results[0].studentName.replace(/[^a-zA-Z0-9]/g, '_')}_GradingResult_BW.pdf`
+    : `Grading_Results_${results.length}_Students_BW.pdf`;
+  doc.save(fileName);
+};

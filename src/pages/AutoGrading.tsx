@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckSquare, Users, Award, MessageSquare, Download, Upload, X, Image, FileText } from 'lucide-react';
+import { CheckSquare, Users, Award, MessageSquare, Download, Upload, X, Image, FileText, ChevronDown } from 'lucide-react';
 import { gradeExamPapers, gradeFromImages, isConfigured } from '../services/gemini';
 import { saveToHistory } from '../services/history';
+import { exportGradingResultsToPDF, exportGradingResultsToPDFBW } from '../services/pdfExport';
 import LoadingSpinner from '../components/LoadingSpinner';
 import type { Exam, QuizQuestion, GradedResult, HistoryItem } from '../types';
 
@@ -42,6 +43,7 @@ export default function AutoGrading() {
   const [results, setResults] = useState<GradedPaper[]>([]);
   const [error, setError] = useState('');
   const [loadedFromHistory, setLoadedFromHistory] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Load from history if navigated with state
   useEffect(() => {
@@ -368,10 +370,26 @@ export default function AutoGrading() {
           >
             <div className="results-header">
               <h2>Grading Results</h2>
-              <button className="btn btn-secondary">
-                <Download size={18} />
-                Export Results
-              </button>
+              <div className="export-dropdown">
+                <button 
+                  className="btn btn-primary"
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                >
+                  <Download size={18} />
+                  Export Results
+                  <ChevronDown size={16} />
+                </button>
+                {showExportMenu && (
+                  <div className="export-menu">
+                    <button onClick={() => { exportGradingResultsToPDF(results); setShowExportMenu(false); }}>
+                      🎨 Color Version
+                    </button>
+                    <button onClick={() => { exportGradingResultsToPDFBW(results); setShowExportMenu(false); }}>
+                      ⬛ Black & White
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="stats-grid">
@@ -550,6 +568,20 @@ export default function AutoGrading() {
           margin-bottom: 24px; flex-wrap: wrap; gap: 16px;
         }
         .results-header h2 { font-size: 24px; color: var(--gray-800); }
+
+        .export-dropdown { position: relative; }
+        .export-dropdown .btn { display: flex; align-items: center; gap: 6px; }
+        .export-menu {
+          position: absolute; top: 100%; right: 0; margin-top: 8px;
+          background: white; border-radius: 12px; box-shadow: var(--shadow-lg);
+          overflow: hidden; z-index: 100; min-width: 180px;
+        }
+        .export-menu button {
+          width: 100%; padding: 12px 16px; border: none; background: none;
+          text-align: left; cursor: pointer; font-size: 14px;
+          display: flex; align-items: center; gap: 8px; transition: background 0.2s;
+        }
+        .export-menu button:hover { background: var(--gray-100); }
 
         .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
         @media (max-width: 640px) { .stats-grid { grid-template-columns: 1fr; } }
